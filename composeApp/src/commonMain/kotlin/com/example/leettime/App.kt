@@ -4,9 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
@@ -23,11 +26,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.leettime.components.StageWheel
+import com.example.leettime.components.stagesExample
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +41,8 @@ fun App() {
     MaterialTheme {
         var leetcodeNumber by remember { mutableStateOf("1") }
         var showEditDialog by remember { mutableStateOf(false) }
+        var currentStageIndex by remember { mutableStateOf(-1) }
+        var isRunning by remember { mutableStateOf(false) }
         val timeString = "00:00:00"
 
         Scaffold(
@@ -46,7 +53,9 @@ fun App() {
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Leetcode #$leetcodeNumber")
+                            Text(
+                                "Leetcode #$leetcodeNumber",
+                                fontWeight = FontWeight.Bold)
                         }
                     },
                     navigationIcon = {
@@ -83,14 +92,34 @@ fun App() {
                 ) {
                     Text(
                         "Leetcode name",
-                        fontSize = 18.sp,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "Solve in:",
+                        fontSize = 34.sp,
+                        fontStyle = FontStyle.Italic,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         timeString,
-                        fontSize = 16.sp,
+                        fontSize = 64.sp,
                         fontWeight = FontWeight.Normal
                     )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Stage Wheel
+                    StageWheel(
+                        stages = stagesExample,
+                        currentStageIndex = currentStageIndex,
+                        isRunning = isRunning,
+                        onCenterClickSwipe = { },
+                        modifier = Modifier
+                            .size(350.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
             }
         }
