@@ -32,7 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.leettime.components.StageWheel
 import com.example.leettime.components.stagesExample
+import com.example.leettime.components.total_time_limit_example
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +46,27 @@ fun App() {
         var showEditDialog by remember { mutableStateOf(false) }
         var currentStageIndex by remember { mutableStateOf(-1) }
         var isRunning by remember { mutableStateOf(false) }
-        val timeString = "00:00:00"
+        var remainingTime by remember { mutableStateOf(total_time_limit_example) }
+
+        // Timer countdown
+        LaunchedEffect(isRunning) {
+            while (isRunning && remainingTime.inWholeMilliseconds > 0) {
+                delay(16) // updates every 16ms (~60fps)
+                remainingTime -= 16.milliseconds
+            }
+            if (remainingTime.inWholeMilliseconds <= 0) {
+                isRunning = false
+                remainingTime = total_time_limit_example
+            }
+        }
+
+        val timeString = remember(remainingTime) {
+            val totalSeconds = remainingTime.inWholeSeconds
+            val hours = totalSeconds / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            val seconds = totalSeconds % 60
+            "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+        }
 
         Scaffold(
             topBar = {
@@ -111,10 +134,17 @@ fun App() {
 
                     // Stage Wheel
                     StageWheel(
+                        totalTimeLimit = total_time_limit_example,
                         stages = stagesExample,
                         currentStageIndex = currentStageIndex,
                         isRunning = isRunning,
-                        onCenterClickSwipe = { },
+                        remainingTime = remainingTime,
+                        onCenterClickSwipe = {
+                            isRunning = !isRunning
+                            if (!isRunning) {
+                                remainingTime = total_time_limit_example
+                            }
+                        },
                         modifier = Modifier
                             .size(350.dp)
                     )
@@ -124,7 +154,6 @@ fun App() {
             }
         }
 
-        // Edit dialog (simple state for now)
         if (showEditDialog) {
             EditLeetcodeDialog(
                 currentNumber = leetcodeNumber,
