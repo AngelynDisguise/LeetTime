@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import kotlinx.coroutines.delay
 
 import leettime.composeapp.generated.resources.Res
 import leettime.composeapp.generated.resources.compose_multiplatform
@@ -61,6 +60,14 @@ fun App() {
                             Icon(
                                 imageVector = Icons.Default.Menu,
                                 contentDescription = "Menu"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showEditDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit"
                             )
                         }
                     }
@@ -108,6 +115,51 @@ fun App() {
             }
         }
 
+        // Edit dialog (simple state for now)
+        if (showEditDialog) {
+            EditLeetcodeDialog(
+                currentNumber = leetcodeNumber,
+                onConfirm = { newNumber ->
+                    leetcodeNumber = newNumber
+                    showEditDialog = false
+                },
+                onDismiss = { showEditDialog = false }
+            )
+        }
     }
 }
 
+@Composable
+fun EditLeetcodeDialog(
+    currentNumber: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var inputValue by remember { mutableStateOf(currentNumber) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Leetcode Number") },
+        text = {
+            TextField(
+                value = inputValue,
+                onValueChange = { inputValue = it },
+                label = { Text("Leetcode Number") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(inputValue) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
