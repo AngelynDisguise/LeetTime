@@ -1,7 +1,10 @@
 package com.example.leettime.data.repository
 
+import com.example.leettime.data.local.ProblemCache
 import com.example.leettime.data.model.Problem
 import com.example.leettime.data.network.LeetCodeApiService
+import com.russhwolf.settings.Settings
+import com.russhwolf.settings.MapSettings as SettingsMapSettings
 import kotlinx.coroutines.test.runTest
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -12,7 +15,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 /**
@@ -49,7 +51,9 @@ class LeetCodeRepositoryTest : KoinTest {
         startKoin {
             modules(module {
                 single<LeetCodeApiService> { fakeApiService }
-                single { LeetCodeRepository(get()) }
+                single<Settings> { SettingsMapSettings() }
+                single { ProblemCache(get()) }
+                single { LeetCodeRepository(get(), get()) }
             })
         }
         fakeApiService.reset()
@@ -61,35 +65,17 @@ class LeetCodeRepositoryTest : KoinTest {
     }
 
     @Test
-    fun `getProblem with valid slug returns problem`() = runTest {
-        // Given
-        val slug = "two-sum"
-        val expectedProblem = Problem(
-            id = 1,
-            title = "Two Sum",
-            difficulty = "Easy",
-            description = "Given an array of integers..."
-        )
-        fakeApiService.problemToReturn = expectedProblem
-
-        // When
-        val result = repository.getProblem(slug = slug)
-
-        // Then
-        assertEquals(expectedProblem, result)
-        assertEquals(slug, fakeApiService.lastSlugCalled)
-        assertNull(fakeApiService.lastIdCalled)
-    }
-
-    @Test
     fun `getProblem with valid id returns problem`() = runTest {
         // Given
         val id = 1
         val expectedProblem = Problem(
-            id = 1,
+            id = "1",
+            frontendId = "1",
             title = "Two Sum",
             difficulty = "Easy",
-            description = "Given an array of integers..."
+            description = "Given an array of integers...",
+            likes = 1000,
+            dislikes = 50
         )
         fakeApiService.problemToReturn = expectedProblem
 
@@ -98,26 +84,43 @@ class LeetCodeRepositoryTest : KoinTest {
 
         // Then
         assertEquals(expectedProblem, result)
-        assertNull(fakeApiService.lastSlugCalled)
-        assertEquals(id, fakeApiService.lastIdCalled)
     }
 
     @Test
-    fun `getProblem with both slug and id null throws IllegalArgumentException`() = runTest {
-        // When/Then
-        assertFailsWith<IllegalArgumentException> {
-            repository.getProblem(slug = null, id = null)
-        }
+    fun `getProblem fetches from cache first`() = runTest {
+        // Given
+        val id = 1
+        val expectedProblem = Problem(
+            id = "1",
+            frontendId = "1",
+            title = "Two Sum",
+            difficulty = "Easy",
+            description = "Given an array of integers...",
+            likes = 1000,
+            dislikes = 50
+        )
+        // First call should fetch from API and cache
+        fakeApiService.problemToReturn = expectedProblem
+        repository.getProblem(id = id)
+
+        // Reset fake to return null
+        fakeApiService.problemToReturn = null
+
+        // When - second call should hit cache
+        val result = repository.getProblem(id = id)
+
+        // Then
+        assertEquals(expectedProblem, result)
     }
 
     @Test
     fun `getProblem with generic exception returns null`() = runTest {
         // Given
-        val slug = "two-sum"
+        val id = 1
         fakeApiService.exceptionToThrow = RuntimeException("Network error")
 
         // When
-        val result = repository.getProblem(slug = slug)
+        val result = repository.getProblem(id = id)
 
         // Then
         assertNull(result)
@@ -126,11 +129,11 @@ class LeetCodeRepositoryTest : KoinTest {
     @Test
     fun `getProblem when apiService returns null returns null`() = runTest {
         // Given
-        val slug = "two-sum"
+        val id = 1
         fakeApiService.problemToReturn = null
 
         // When
-        val result = repository.getProblem(slug = slug)
+        val result = repository.getProblem(id = id)
 
         // Then
         assertNull(result)
