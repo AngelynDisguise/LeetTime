@@ -96,13 +96,13 @@ fun StageWheel(
             for (angle in (maxRotationReached.toInt() + 1)..currentAngleDegree) {
                 colorTrail[angle] = currentStageIndex
             }
-            //maxRotationReached = rotationAngle
+            maxRotationReached = rotationAngle
         }
     }
 
     // Reset when not running
     if (!isRunning && currentStageIndex < 0) {
-        //maxRotationReached = -90f
+        maxRotationReached = -90f
         colorTrail.clear()
     }
 
@@ -326,7 +326,7 @@ fun StageWheel(
 
         // Inner circle text
         // Special case: "Next:" + stage name with dynamic sizing
-        if (currentStageIndex >= 0 && currentStageIndex < stages.size - 1) {
+        if (!isFinished && currentStageIndex >= 0 && currentStageIndex < stages.size - 1) {
             val nextText = "Next:"
             val stageName = stages[currentStageIndex + 1].name
 
