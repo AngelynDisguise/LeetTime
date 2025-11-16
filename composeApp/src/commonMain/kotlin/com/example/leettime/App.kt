@@ -46,6 +46,7 @@ fun App() {
         var showEditDialog by remember { mutableStateOf(false) }
         var currentStageIndex by remember { mutableStateOf(-1) }
         var isRunning by remember { mutableStateOf(false) }
+        var isFinished by remember { mutableStateOf(false) }
         var remainingTime by remember { mutableStateOf(total_time_limit_example) }
 
         // Timer countdown
@@ -56,7 +57,7 @@ fun App() {
             }
             if (remainingTime.inWholeMilliseconds <= 0) {
                 isRunning = false
-                remainingTime = total_time_limit_example
+                isFinished = true
             }
         }
 
@@ -107,7 +108,6 @@ fun App() {
                     .padding(paddingValues),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Top titles stacked at the center
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -130,19 +130,29 @@ fun App() {
                         fontWeight = FontWeight.Normal
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Stage Wheel
                     StageWheel(
                         totalTimeLimit = total_time_limit_example,
                         stages = stagesExample,
                         currentStageIndex = currentStageIndex,
                         isRunning = isRunning,
+                        isFinished = isFinished,
                         remainingTime = remainingTime,
                         onCenterClickSwipe = {
-                            isRunning = !isRunning
-                            if (!isRunning) {
+                            if (isFinished) { // reset
+                                isFinished = false
+                                isRunning = false
+                                currentStageIndex = -1
                                 remainingTime = total_time_limit_example
+                            } else if (!isRunning && currentStageIndex < 0) { // start
+                                isRunning = true
+                                currentStageIndex = 0
+                            } else if (currentStageIndex < stagesExample.size - 1) { // advance stages
+                                currentStageIndex++
+                            } else { // Last stage: Finish - stop timer and keep visual state
+                                isRunning = false
+                                isFinished = true
                             }
                         },
                         modifier = Modifier

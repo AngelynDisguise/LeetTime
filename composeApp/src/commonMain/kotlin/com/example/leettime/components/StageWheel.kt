@@ -17,7 +17,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
@@ -64,6 +66,7 @@ fun StageWheel(
     stages: List<Stage>,
     currentStageIndex: Int,
     isRunning: Boolean,
+    isFinished: Boolean,
     remainingTime: Duration,
     onCenterClickSwipe: () -> Unit,
     modifier: Modifier = Modifier
@@ -89,22 +92,35 @@ fun StageWheel(
     // Rotation starts at -90 degrees
     val rotationAngle = -90f + (progress * 360f)
 
-    // This tracks which colors to persist
+    // Track the color trail: maps rotation angle to the stage index that was active at that angle
+    val colorTrail = remember { mutableMapOf<Int, Int>() } // e.g. stageIndex : angle
+
+    // Track max rotation and current stage at that rotation
     var maxRotationReached by remember { mutableStateOf(-90f) }
 
-    if (isRunning) {
-        if (rotationAngle > maxRotationReached) {
+    // Update color trail as pointer rotates
+    if (isRunning && currentStageIndex >= 0) {
+        val currentAngleDegree = rotationAngle.toInt()
+        if (currentAngleDegree > maxRotationReached.toInt()) {
+            for (angle in (maxRotationReached.toInt() + 1)..currentAngleDegree) {
+                colorTrail[angle] = currentStageIndex
+            }
             maxRotationReached = rotationAngle
         }
-    } else {
+    }
+
+    // Reset when not running
+    if (!isRunning && currentStageIndex < 0) {
         maxRotationReached = -90f
+        colorTrail.clear()
     }
 
     var size by remember { mutableStateOf(IntSize.Zero) }
     val textMeasurer = rememberTextMeasurer()
     val centerTextStyle = TextStyle(
         color = Color.White,
-        fontSize = 48.sp
+        fontSize = 32.sp,  // Reduced from 48sp to fit longer text
+        textAlign = TextAlign.Center
     )
     val sectionTextStyle = TextStyle(
         color = Color.Black,
@@ -145,47 +161,94 @@ fun StageWheel(
         val totalTimeLimitMinutes = totalTimeLimit.inWholeSeconds.toFloat()
 
 
-        // Draw outer circle sections
+        // Draw outer circle sections with color trail
         var currentAngle = -90f // Start at 90 degrees (top)
+        val arcRadius = innerRadius + sectionThickness / 2f
+
         stages.forEachIndexed { index, stage ->
             //val stageDurationMinutes = stage.time_limit.inWholeMinutes.toFloat()
             val stageDurationMinutes = stage.time_limit.inWholeSeconds.toFloat()
             val sweepAngle = (stageDurationMinutes / totalTimeLimitMinutes) * 360f
+            val sectionEndAngle = currentAngle + sweepAngle
 
             val baseColor = sectionColors.getOrNull(index) ?: Color.Gray
             val isCurrentStage = index == currentStageIndex
-            val hasPointerPassed = maxRotationReached >= currentAngle
 
-            // Grey out sections and return to normal when visited by pointer
-            val color = if (isRunning && !hasPointerPassed) {
-                baseColor.copy(alpha = 0.3f)
-            } else {
-                baseColor
+            // Check if this section has been visited by checking the color trail
+            val sectionStartInt = currentAngle.toInt()
+            val sectionEndInt = sectionEndAngle.toInt()
+
+            // Find all continuous segments with the same stage color within this section
+            var segmentStart = sectionStartInt
+            var currentSegmentStage = colorTrail[segmentStart]
+
+            for (angle in sectionStartInt..sectionEndInt) {
+                val stageAtAngle = colorTrail[angle]
+
+                if (stageAtAngle != currentSegmentStage) {
+                    // Draw the previous segment
+                    if (currentSegmentStage != null && segmentStart < angle) {
+                        val segmentColor = sectionColors.getOrNull(currentSegmentStage) ?: Color.Gray
+                        drawArc(
+                            color = segmentColor,
+                            startAngle = segmentStart.toFloat(),
+                            sweepAngle = (angle - segmentStart).toFloat(),
+                            useCenter = false,
+                            topLeft = Offset(centerX - arcRadius, centerY - arcRadius),
+                            size = Size(arcRadius * 2, arcRadius * 2),
+                            style = Stroke(width = sectionThickness)
+                        )
+                    } else if (currentSegmentStage == null && segmentStart < angle) {
+                        // Draw greyed out section for unvisited parts
+                        drawArc(
+                            color = baseColor.copy(alpha = 0.3f),
+                            startAngle = segmentStart.toFloat(),
+                            sweepAngle = (angle - segmentStart).toFloat(),
+                            useCenter = false,
+                            topLeft = Offset(centerX - arcRadius, centerY - arcRadius),
+                            size = Size(arcRadius * 2, arcRadius * 2),
+                            style = Stroke(width = sectionThickness)
+                        )
+                    }
+
+                    // Start new segment
+                    segmentStart = angle
+                    currentSegmentStage = stageAtAngle
+                }
             }
 
-            // Draw the section arc
-            // The arc is centered at (innerRadius + sectionThickness/2) so the stroke extends inward and outward
-            val arcRadius = innerRadius + sectionThickness / 2f
-            drawArc(
-                color = color,
-                startAngle = currentAngle,
-                sweepAngle = sweepAngle,
-                useCenter = false,
-                topLeft = Offset(
-                    centerX - arcRadius,
-                    centerY - arcRadius
-                ),
-                size = Size(arcRadius * 2, arcRadius * 2),
-                style = Stroke(
-                    width = sectionThickness
-                )
-            )
+            // Draw final segment of this section
+            if (segmentStart <= sectionEndInt) {
+                if (currentSegmentStage != null) {
+                    val segmentColor = sectionColors.getOrNull(currentSegmentStage) ?: Color.Gray
+                    drawArc(
+                        color = segmentColor,
+                        startAngle = segmentStart.toFloat(),
+                        sweepAngle = (sectionEndInt - segmentStart + 1).toFloat(),
+                        useCenter = false,
+                        topLeft = Offset(centerX - arcRadius, centerY - arcRadius),
+                        size = Size(arcRadius * 2, arcRadius * 2),
+                        style = Stroke(width = sectionThickness)
+                    )
+                } else {
+                    // Unvisited section - grey it out
+                    drawArc(
+                        color = baseColor.copy(alpha = 0.3f),
+                        startAngle = segmentStart.toFloat(),
+                        sweepAngle = (sectionEndInt - segmentStart + 1).toFloat(),
+                        useCenter = false,
+                        topLeft = Offset(centerX - arcRadius, centerY - arcRadius),
+                        size = Size(arcRadius * 2, arcRadius * 2),
+                        style = Stroke(width = sectionThickness)
+                    )
+                }
+            }
 
             // Draw glow effect on rim if it's the current stage
             if (isCurrentStage) {
                 val glowRadius = arcRadius + sectionThickness / 2f + 6f
                 drawArc(
-                    color = color.copy(alpha = 0.5f),
+                    color = baseColor.copy(alpha = 0.5f),
                     startAngle = currentAngle,
                     sweepAngle = sweepAngle,
                     useCenter = false,
@@ -228,7 +291,7 @@ fun StageWheel(
             val stageInitial = stage.name.firstOrNull()?.toString() ?: ""
             val initialTextLayout = textMeasurer.measure(stageInitial, sectionTextStyle)
 
-            // clip if text overflows
+            // Clip label if text overflows
             val maxTextWidth = sectionThickness * 0.8f
             if (initialTextLayout.size.width <= maxTextWidth && initialTextLayout.size.height <= maxTextWidth) {
                 drawText(
@@ -243,11 +306,18 @@ fun StageWheel(
             currentAngle += sweepAngle
         }
 
-        // Draw inner circle background with color based on current stage
-        val centerButtonColor = if (currentStageIndex >= 0 && currentStageIndex < sectionColors.size) {
-            sectionColors[currentStageIndex].copy(alpha = 0.8f)
-        } else {
-            Color.DarkGray
+        // Draw inner circle
+        val centerButtonColor = when {
+            isFinished -> Color.DarkGray
+            currentStageIndex < 0 -> Color.DarkGray
+            currentStageIndex < stages.size - 1 -> {
+                sectionColors.getOrNull(currentStageIndex + 1)?.copy(alpha = 0.8f) ?: Color.DarkGray
+            }
+            currentStageIndex == stages.size - 1 -> {
+                // "Finish" button uses last stage color, but maybe we can make it gray instead?
+                sectionColors.getOrNull(currentStageIndex)?.copy(alpha = 0.8f) ?: Color.DarkGray
+            }
+            else -> Color.DarkGray
         }
         drawCircle(
             color = centerButtonColor,
@@ -263,21 +333,73 @@ fun StageWheel(
             style = Stroke(width = 2f)
         )
 
-        // Inner circle text: "Go" if no index elected, otherwise the stage name
-        val centerText = if (currentStageIndex >= 0 && currentStageIndex < stages.size) {
-            stages[currentStageIndex].name
-        } else {
-            "Go"
-        }
+        // Inner circle text
+        // Special case: "Next:" + stage name with dynamic sizing
+        if (currentStageIndex >= 0 && currentStageIndex < stages.size - 1) {
+            val nextText = "Next:"
+            val stageName = stages[currentStageIndex + 1].name
 
-        val textLayoutResult = textMeasurer.measure(centerText, centerTextStyle)
-        drawText(
-            textLayoutResult,
-            topLeft = Offset(
-                centerX - textLayoutResult.size.width / 2f,
-                centerY - textLayoutResult.size.height / 2f
+            val nextTextStyle = TextStyle(
+                color = Color.White,
+                fontSize = 20.sp,
+                textAlign = TextAlign.Center
             )
-        )
+            val nextLayout = textMeasurer.measure(nextText, nextTextStyle)
+
+            // Dynamically size the stage name to fit
+            val maxTextWidth = innerRadius * 1.6f
+            val remainingHeight = innerRadius * 1.6f - nextLayout.size.height
+            var stageTextSize = 48.sp
+            var stageLayout = textMeasurer.measure(
+                stageName,
+                centerTextStyle.copy(fontSize = stageTextSize, fontWeight = FontWeight.Bold)
+            )
+
+            // Reduce font size if text is too large
+            while ((stageLayout.size.width > maxTextWidth || stageLayout.size.height > remainingHeight) && stageTextSize.value > 16) {
+                stageTextSize = (stageTextSize.value - 2).sp
+                stageLayout = textMeasurer.measure(
+                    stageName,
+                    centerTextStyle.copy(fontSize = stageTextSize, fontWeight = FontWeight.Bold)
+                )
+            }
+
+            // Calculate total height for vertical centering
+            val totalHeight = nextLayout.size.height + stageLayout.size.height
+            val startY = centerY - totalHeight / 2f
+
+            // Draw button text: "Next: stage"
+            drawText(
+                nextLayout,
+                topLeft = Offset(
+                    centerX - nextLayout.size.width / 2f,
+                    startY
+                )
+            )
+            drawText(
+                stageLayout,
+                topLeft = Offset(
+                    centerX - stageLayout.size.width / 2f,
+                    startY + nextLayout.size.height
+                )
+            )
+        } else {
+            val centerText = when {
+                isFinished -> "Reset"
+                currentStageIndex < 0 -> "Go"
+                currentStageIndex == stages.size - 1 -> "Finish"
+                else -> "Go"
+            }
+
+            val textLayoutResult = textMeasurer.measure(centerText, centerTextStyle)
+            drawText(
+                textLayoutResult,
+                topLeft = Offset(
+                    centerX - textLayoutResult.size.width / 2f,
+                    centerY - textLayoutResult.size.height / 2f
+                )
+            )
+        }
 
         // Draw the rotating pointer (clock hand)
         // Pointer starts at the edge of the inner circle and extends to the outer edge of the wheel
@@ -290,8 +412,15 @@ fun StageWheel(
         val pointerEndX = centerX + pointerEndRadius * cos(pointerAngleRad)
         val pointerEndY = centerY + pointerEndRadius * sin(pointerAngleRad)
 
+        // Pointer color is based on current active stage
+        val pointerColor = if (currentStageIndex >= 0 && currentStageIndex < sectionColors.size) {
+            sectionColors[currentStageIndex]
+        } else {
+            Color.Black
+        }
+
         drawLine(
-            color = Color.Black,
+            color = pointerColor,
             start = Offset(pointerStartX, pointerStartY),
             end = Offset(pointerEndX, pointerEndY),
             strokeWidth = 8f
