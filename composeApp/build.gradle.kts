@@ -8,14 +8,19 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.googleServices)
 }
 
 kotlin {
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
+            // Allow experimental Firebase AI Live API
+            freeCompilerArgs.addAll("-Xallow-unstable-dependencies", "-Xsuppress-version-warnings")
         }
     }
+
+    jvm("desktop")
 
     listOf(
         iosArm64(),
@@ -36,6 +41,18 @@ kotlin {
     wasmJs {
         browser()
         binaries.executable()
+    }
+
+    // Configure compiler to allow experimental Firebase AI APIs
+    targets.all {
+        compilations.all {
+            compilerOptions.configure {
+                freeCompilerArgs.addAll(
+                    "-Xskip-prerelease-check",
+                    "-Xsuppress-version-warnings"
+                )
+            }
+        }
     }
 
     sourceSets {
@@ -66,6 +83,17 @@ kotlin {
             implementation("com.russhwolf:multiplatform-settings-datastore:1.2.0")
             implementation("com.russhwolf:multiplatform-settings-coroutines:1.2.0")
             implementation(libs.koin.android)
+
+            // Firebase AI Logic for Gemini Live API
+            // Using latest BOM for Live API support (firebase-ai:17.6.0)
+            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:34.6.0"))
+            implementation("com.google.firebase:firebase-ai")
+        }
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation("io.ktor:ktor-client-okhttp:3.3.2")
+            }
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -115,4 +143,3 @@ android {
 dependencies {
     debugImplementation(compose.uiTooling)
 }
-

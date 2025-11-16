@@ -1,4 +1,4 @@
-package com.example.leettime.ui
+package com.example.leettime.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

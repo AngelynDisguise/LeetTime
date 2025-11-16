@@ -36,11 +36,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.leettime.ui.components.StageWheel
 import com.example.leettime.ui.components.stagesExample
 import com.example.leettime.ui.components.total_time_limit_example
-import com.example.leettime.ui.LeetCodeViewModel
+import com.example.leettime.ui.viewmodels.LeetCodeViewModel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +50,7 @@ fun App(
     viewModel: LeetCodeViewModel = koinViewModel()
 ) {
     MaterialTheme {
+        var totalTimeLimit by remember { mutableStateOf(total_time_limit_example) } // I need to store this in DataStore
         var leetcodeNumber by remember { mutableStateOf(1) }
         var leetcodeName by remember { mutableStateOf("--") }
         var currentStageTitle by remember { mutableStateOf("Solve in:") }
@@ -176,7 +178,7 @@ fun App(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     StageWheel(
-                        totalTimeLimit = total_time_limit_example,
+                        totalTimeLimit = totalTimeLimit,
                         stages = stagesExample,
                         currentStageIndex = currentStageIndex,
                         isRunning = isRunning,
