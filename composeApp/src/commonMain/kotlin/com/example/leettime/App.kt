@@ -32,22 +32,43 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.leettime.components.StageWheel
-import com.example.leettime.components.stagesExample
-import com.example.leettime.components.total_time_limit_example
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.leettime.ui.components.StageWheel
+import com.example.leettime.ui.components.stagesExample
+import com.example.leettime.ui.components.total_time_limit_example
+import com.example.leettime.ui.LeetCodeViewModel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
-fun App() {
+fun App(
+    viewModel: LeetCodeViewModel = koinViewModel()
+) {
     MaterialTheme {
-        var leetcodeNumber by remember { mutableStateOf("1") }
+        var leetcodeNumber by remember { mutableStateOf(1) }
         var leetcodeName by remember { mutableStateOf("--") }
         var currentStageTitle by remember { mutableStateOf("Solve in:") }
         var showEditDialog by remember { mutableStateOf(false) }
+
+        // Collect problem from ViewModel
+        val currentProblem by viewModel.currentProblem.collectAsStateWithLifecycle()
+        val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+        // Update leetcodeName when problem is loaded
+        LaunchedEffect(currentProblem) {
+            currentProblem?.let { problem ->
+                leetcodeName = problem.title
+            }
+        }
+
+        // Load problem when number changes
+        LaunchedEffect(leetcodeNumber) {
+            viewModel.loadProblem(leetcodeNumber)
+        }
 
 
         var currentStageIndex by remember { mutableStateOf(-1) }
@@ -85,7 +106,7 @@ fun App() {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "Leetcode #$leetcodeNumber",
+                                "LeetCode #$leetcodeNumber",
                                 fontWeight = FontWeight.Bold)
                         }
                     },
@@ -192,9 +213,9 @@ fun App() {
 
         if (showEditDialog) {
             EditLeetcodeDialog(
-                currentNumber = leetcodeNumber,
+                currentNumber = leetcodeNumber.toString(),
                 onConfirm = { newNumber ->
-                    leetcodeNumber = newNumber
+                    leetcodeNumber = newNumber.toIntOrNull() ?: leetcodeNumber
                     showEditDialog = false
                 },
                 onDismiss = { showEditDialog = false }

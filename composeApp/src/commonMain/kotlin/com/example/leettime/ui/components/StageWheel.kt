@@ -1,4 +1,4 @@
-package com.example.leettime.components
+package com.example.leettime.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures

@@ -54,7 +54,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.koin.core)
-
+            implementation(libs.koin.compose.viewmodel)
             implementation("com.russhwolf:multiplatform-settings:1.2.0")
             implementation("com.russhwolf:multiplatform-settings-serialization:1.2.0")
         }
