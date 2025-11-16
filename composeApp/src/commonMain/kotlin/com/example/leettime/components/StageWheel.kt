@@ -34,6 +34,7 @@ data class Stage(
     var name: String,
     var time_limit: Duration,
     val description: String,
+    val color: Color,
     //var hint: String,
 )
 
@@ -51,12 +52,12 @@ data class Stage(
 // Changed to seconds for testing
 val total_time_limit_example = 20.seconds
 val stagesExample = listOf(
-    Stage("Understand", 3.seconds, "Read the question. Ask the interviewer questions about edge cases."),
-    Stage("Match", 1.seconds, "Identify an appropriate data structure, algorithm, or pattern."),
-    Stage("Plan", 3.seconds, "Explain and code the steps to your solution in pseudocode."),
-    Stage("Implement", 10.seconds, "Implement your pseudocode into real code."),
-    Stage("Review", 2.seconds, "Test code and fix bugs."),
-    Stage("Evaluate", 1.seconds, "Identify time and space complexities and improvements that could be made.")
+    Stage("Understand", 3.seconds, "Read the question. Ask the interviewer questions about edge cases.", Color.Green),
+    Stage("Match", 1.seconds, "Identify an appropriate data structure, algorithm, or pattern.", Color(0xFFFF6F00)), // Orange
+    Stage("Plan", 3.seconds, "Explain and code the steps to your solution in pseudocode.", Color(0xFFFFC107)), // Amber
+    Stage("Implement", 10.seconds, "Implement your pseudocode into real code.", Color.Red),
+    Stage("Review", 2.seconds, "Test code and fix bugs.", Color.Blue),
+    Stage("Evaluate", 1.seconds, "Identify time and space complexities and improvements that could be made.", Color(0xFF9C27B0))
 )
 
 
@@ -71,16 +72,6 @@ fun StageWheel(
     onCenterClickSwipe: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sectionColors = remember {
-        listOf(
-            Color.Green,                // Green - Understand
-            Color(0xFFFF9800),   // Orange - Match
-            Color.Yellow,               // Vivid Yellow - Plan
-            Color.Red,                  // Red - Implement
-            Color.Blue,                 // Blue - Review
-            Color(0xFF9C27B0),   // Purple - Evaluate
-        )
-    }
 
     // Calculate rotation angle based on remaining time (0-1)
     val progress = if (totalTimeLimit.inWholeMilliseconds > 0) {
@@ -105,13 +96,13 @@ fun StageWheel(
             for (angle in (maxRotationReached.toInt() + 1)..currentAngleDegree) {
                 colorTrail[angle] = currentStageIndex
             }
-            maxRotationReached = rotationAngle
+            //maxRotationReached = rotationAngle
         }
     }
 
     // Reset when not running
     if (!isRunning && currentStageIndex < 0) {
-        maxRotationReached = -90f
+        //maxRotationReached = -90f
         colorTrail.clear()
     }
 
@@ -171,7 +162,7 @@ fun StageWheel(
             val sweepAngle = (stageDurationMinutes / totalTimeLimitMinutes) * 360f
             val sectionEndAngle = currentAngle + sweepAngle
 
-            val baseColor = sectionColors.getOrNull(index) ?: Color.Gray
+            val baseColor = stage.color
             val isCurrentStage = index == currentStageIndex
 
             // Check if this section has been visited by checking the color trail
@@ -188,7 +179,7 @@ fun StageWheel(
                 if (stageAtAngle != currentSegmentStage) {
                     // Draw the previous segment
                     if (currentSegmentStage != null && segmentStart < angle) {
-                        val segmentColor = sectionColors.getOrNull(currentSegmentStage) ?: Color.Gray
+                        val segmentColor = stages.getOrNull(currentSegmentStage)?.color ?: Color.Gray
                         drawArc(
                             color = segmentColor,
                             startAngle = segmentStart.toFloat(),
@@ -220,7 +211,7 @@ fun StageWheel(
             // Draw final segment of this section
             if (segmentStart <= sectionEndInt) {
                 if (currentSegmentStage != null) {
-                    val segmentColor = sectionColors.getOrNull(currentSegmentStage) ?: Color.Gray
+                    val segmentColor = stages.getOrNull(currentSegmentStage)?.color ?: Color.Gray
                     drawArc(
                         color = segmentColor,
                         startAngle = segmentStart.toFloat(),
@@ -311,11 +302,11 @@ fun StageWheel(
             isFinished -> Color.DarkGray
             currentStageIndex < 0 -> Color.DarkGray
             currentStageIndex < stages.size - 1 -> {
-                sectionColors.getOrNull(currentStageIndex + 1)?.copy(alpha = 0.8f) ?: Color.DarkGray
+                stages.getOrNull(currentStageIndex + 1)?.color?.copy(alpha = 0.8f) ?: Color.DarkGray
             }
             currentStageIndex == stages.size - 1 -> {
                 // "Finish" button uses last stage color, but maybe we can make it gray instead?
-                sectionColors.getOrNull(currentStageIndex)?.copy(alpha = 0.8f) ?: Color.DarkGray
+                stages.getOrNull(currentStageIndex)?.color?.copy(alpha = 0.8f) ?: Color.DarkGray
             }
             else -> Color.DarkGray
         }
@@ -413,8 +404,8 @@ fun StageWheel(
         val pointerEndY = centerY + pointerEndRadius * sin(pointerAngleRad)
 
         // Pointer color is based on current active stage
-        val pointerColor = if (currentStageIndex >= 0 && currentStageIndex < sectionColors.size) {
-            sectionColors[currentStageIndex]
+        val pointerColor = if (currentStageIndex >= 0 && currentStageIndex < stages.size) {
+            stages[currentStageIndex].color
         } else {
             Color.Black
         }
