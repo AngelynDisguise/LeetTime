@@ -26,6 +26,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,7 +45,11 @@ import kotlin.time.Duration.Companion.milliseconds
 fun App() {
     MaterialTheme {
         var leetcodeNumber by remember { mutableStateOf("1") }
+        var leetcodeName by remember { mutableStateOf("--") }
+        var currentStageTitle by remember { mutableStateOf("Solve in:") }
         var showEditDialog by remember { mutableStateOf(false) }
+
+
         var currentStageIndex by remember { mutableStateOf(-1) }
         var isRunning by remember { mutableStateOf(false) }
         var isFinished by remember { mutableStateOf(false) }
@@ -58,6 +64,7 @@ fun App() {
             if (remainingTime.inWholeMilliseconds <= 0) {
                 isRunning = false
                 isFinished = true
+                currentStageTitle = "Time's up!"
             }
         }
 
@@ -101,9 +108,15 @@ fun App() {
                 )
             }
         ) { paddingValues ->
+            val backgroundColor = if (currentStageIndex >= 0 && currentStageIndex < stagesExample.size) {
+                stagesExample[currentStageIndex].color.copy(alpha = 0.15f)
+            } else {
+                MaterialTheme.colorScheme.primaryContainer
+            }
+
             Column(
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .background(backgroundColor)
                     .fillMaxSize()
                     .padding(paddingValues),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -114,20 +127,29 @@ fun App() {
                     modifier = Modifier.padding(top = 16.dp)
                 ) {
                     Text(
-                        "Leetcode name",
+                        leetcodeName,
                         fontSize = 34.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+
+                    val stageTitleColor = if (isRunning && currentStageIndex >= 0 && currentStageIndex < stagesExample.size) {
+                        stagesExample[currentStageIndex].color
+                    } else {
+                        Color.Unspecified
+                    }
+
                     Text(
-                        "Solve in:",
-                        fontSize = 34.sp,
-                        fontStyle = FontStyle.Italic,
-                        fontWeight = FontWeight.SemiBold
+                        currentStageTitle,
+                        fontSize = 50.sp,
+                        fontStyle = FontStyle.Normal,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = stageTitleColor
                     )
                     Text(
                         timeString,
                         fontSize = 64.sp,
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = FontFamily.Monospace
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -145,14 +167,18 @@ fun App() {
                                 isRunning = false
                                 currentStageIndex = -1
                                 remainingTime = total_time_limit_example
+                                currentStageTitle = "Solve in:"
                             } else if (!isRunning && currentStageIndex < 0) { // start
                                 isRunning = true
                                 currentStageIndex = 0
+                                currentStageTitle = stagesExample[currentStageIndex].name.uppercase()
                             } else if (currentStageIndex < stagesExample.size - 1) { // advance stages
                                 currentStageIndex++
+                                currentStageTitle = stagesExample[currentStageIndex].name.uppercase()
                             } else { // Last stage: Finish - stop timer and keep visual state
                                 isRunning = false
                                 isFinished = true
+                                currentStageTitle = "Finished!"
                             }
                         },
                         modifier = Modifier
