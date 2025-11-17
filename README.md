@@ -1,3 +1,12 @@
+# It's LeetTime. 😎
+![its-leettime-spiderman](https://github.com/user-attachments/assets/7bdc396e-bec6-408c-8259-28e906f00b18)
+
+Get the app on:
+- Web: [https://angelyndisguise.github.io/LeetTime/](https://angelyndisguise.github.io/LeetTime/)
+- Android: [latest debug apk release]()
+- iOS: *[Coming soon]*
+
+# About Kotlin Multiplatform
 This is a Kotlin Multiplatform project targeting Android, iOS, Web.
 
 * [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
