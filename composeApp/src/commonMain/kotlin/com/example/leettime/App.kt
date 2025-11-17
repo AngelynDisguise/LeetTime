@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,9 +35,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.leettime.data.model.stagesExample
+import com.example.leettime.data.model.total_time_limit_example
+import com.example.leettime.ui.components.InterviewerModeButton
 import com.example.leettime.ui.components.StageWheel
-import com.example.leettime.ui.components.stagesExample
-import com.example.leettime.ui.components.total_time_limit_example
+import com.example.leettime.ui.viewmodels.InterviewViewModel
 import com.example.leettime.ui.viewmodels.LeetCodeViewModel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -47,7 +51,8 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 @Preview
 fun App(
-    viewModel: LeetCodeViewModel = koinViewModel()
+    leetCodeViewModel: LeetCodeViewModel = koinViewModel(),
+    interviewViewModel: InterviewViewModel = koinViewModel()
 ) {
     MaterialTheme {
         var totalTimeLimit by remember { mutableStateOf(total_time_limit_example) } // I need to store this in DataStore
@@ -55,10 +60,14 @@ fun App(
         var leetcodeName by remember { mutableStateOf("--") }
         var currentStageTitle by remember { mutableStateOf("Solve in:") }
         var showEditDialog by remember { mutableStateOf(false) }
+        var isInterviewerModeEnabled by remember { mutableStateOf(true) }
 
-        // Collect problem from ViewModel
-        val currentProblem by viewModel.currentProblem.collectAsStateWithLifecycle()
-        val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+        // Collect problem from LeetCodeViewModel
+        val currentProblem by leetCodeViewModel.currentProblem.collectAsStateWithLifecycle()
+        val isLoading by leetCodeViewModel.isLoading.collectAsStateWithLifecycle()
+
+        // Collect conversation state from InterviewViewModel
+        val conversationState by interviewViewModel.uiState.collectAsStateWithLifecycle()
 
         // Update leetcodeName when problem is loaded
         LaunchedEffect(currentProblem) {
@@ -69,7 +78,7 @@ fun App(
 
         // Load problem when number changes
         LaunchedEffect(leetcodeNumber) {
-            viewModel.loadProblem(leetcodeNumber)
+            leetCodeViewModel.loadProblem(leetcodeNumber)
         }
 
 
@@ -77,6 +86,28 @@ fun App(
         var isRunning by remember { mutableStateOf(false) }
         var isFinished by remember { mutableStateOf(false) }
         var remainingTime by remember { mutableStateOf(total_time_limit_example) }
+
+        // Start/End Gemini conversation based on timer state and interviewer mode
+        LaunchedEffect(isRunning, isFinished, currentProblem, isInterviewerModeEnabled, currentStageIndex) {
+            if (isRunning && !isFinished && currentProblem != null && isInterviewerModeEnabled) {
+                // End any existing conversation first (important for stage changes)
+                interviewViewModel.endInterview()
+
+                // Small delay to ensure clean transition between stages
+                kotlinx.coroutines.delay(300)
+
+                // Start the conversation with the current stage context
+                interviewViewModel.startInterview(
+                    problem = currentProblem!!,
+                    totalTimeLimit = totalTimeLimit,
+                    stages = stagesExample,
+                    currentStageIndex = currentStageIndex
+                )
+            } else if (isFinished || !isInterviewerModeEnabled) {
+                // End the conversation when timer finishes or interviewer mode is disabled
+                interviewViewModel.endInterview()
+            }
+        }
 
         // Timer countdown
         LaunchedEffect(isRunning) {
@@ -108,7 +139,7 @@ fun App(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "LeetCode #$leetcodeNumber",
+                                "LeetCode #$leetcodeNumber: $leetcodeName",
                                 fontWeight = FontWeight.Bold)
                         }
                     },
@@ -149,10 +180,11 @@ fun App(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(top = 16.dp)
                 ) {
-                    Text(
-                        leetcodeName,
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.SemiBold
+                    InterviewerModeButton(
+                        isEnabled = isInterviewerModeEnabled,
+                        isAiSpeaking = conversationState.isAiSpeaking,
+                        onClick = { isInterviewerModeEnabled = !isInterviewerModeEnabled },
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
 
                     val stageTitleColor = if (isRunning && currentStageIndex >= 0 && currentStageIndex < stagesExample.size) {
@@ -168,12 +200,37 @@ fun App(
                         fontWeight = FontWeight.ExtraBold,
                         color = stageTitleColor
                     )
-                    Text(
-                        timeString,
-                        fontSize = 64.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.Monospace
-                    )
+
+                    // Timer with refresh button
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            timeString,
+                            fontSize = 64.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        IconButton(
+                            onClick = {
+                                // Reset everything
+                                isRunning = false
+                                isFinished = false
+                                currentStageIndex = -1
+                                remainingTime = totalTimeLimit
+                                currentStageTitle = "Solve in:"
+                                interviewViewModel.endInterview()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reset",
+                                modifier = Modifier.size(40.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -209,6 +266,29 @@ fun App(
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
+
+                    // Display conversation state for debugging
+                    if (conversationState.error != null) {
+                        Text(
+                            "Error: ${conversationState.error}",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = 12.sp
+                        )
+                    } else if (conversationState.isLoading) {
+                        Text(
+                            "Loading Gemini...",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = 12.sp
+                        )
+                    } else if (conversationState.conversationText.isNotEmpty()) {
+                        Text(
+                            conversationState.conversationText,
+                            modifier = Modifier.padding(16.dp),
+                            fontSize = 10.sp
+                        )
+                    }
                 }
             }
         }

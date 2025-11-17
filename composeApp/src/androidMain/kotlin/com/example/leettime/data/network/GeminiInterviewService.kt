@@ -12,6 +12,7 @@ import com.google.firebase.ai.type.PublicPreviewAPI
 import com.google.firebase.ai.type.ResponseModality
 import com.google.firebase.ai.type.content
 import com.google.firebase.ai.type.liveGenerationConfig
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,6 +39,8 @@ import kotlinx.coroutines.launch
 @Suppress("EXPERIMENTAL_API_USAGE")
 actual class GeminiInterviewService actual constructor() {
 
+    private val TAG = "GeminiInterviewService"
+
     private val _conversationState = MutableStateFlow(InterviewState())
     actual val conversationState: StateFlow<InterviewState> = _conversationState.asStateFlow()
 
@@ -49,6 +52,7 @@ actual class GeminiInterviewService actual constructor() {
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     @OptIn(PublicPreviewAPI::class)
     actual suspend fun startConversation(systemPrompt: String) {
+        Log.d(TAG, "startConversation() called")
         _conversationState.update {
             it.copy(
                 conversationText = "Initializing Gemini Live API...",
@@ -57,6 +61,7 @@ actual class GeminiInterviewService actual constructor() {
         }
 
         try {
+            Log.d(TAG, "Creating Firebase AI model...")
             // Initialize the Vertex AI Gemini API backend service
             // CRITICAL: Set the location to `us-central1` (the flash-live model is only supported in that location)
             // Create a `LiveModel` instance with the flash-live model (only model that supports the Live API)
@@ -71,9 +76,11 @@ actual class GeminiInterviewService actual constructor() {
                 systemInstruction = content { text(systemPrompt) }
             )
 
+            Log.d(TAG, "Connecting to create live session...")
             // Connect to create a live session
             liveSession = model.connect()
 
+            Log.d(TAG, "Starting audio conversation...")
             // Start the audio conversation (handles microphone and playback automatically!)
             // This is the recommended way according to Firebase docs.
             // The SDK handles:
@@ -82,6 +89,7 @@ actual class GeminiInterviewService actual constructor() {
             // - Receiving audio responses (16-bit PCM at 24kHz)
             // - Playing back the audio response
             liveSession?.startAudioConversation()
+            Log.d(TAG, "Audio conversation started successfully!")
 
             // Send an initial message to trigger the AI to start reading the problem
             // This is necessary because the Live API waits for input before responding
@@ -90,9 +98,12 @@ actual class GeminiInterviewService actual constructor() {
                     // Give the session a moment to fully initialize
                     kotlinx.coroutines.delay(1000)
 
+                    Log.d(TAG, "Sending initial prompt to start interview...")
                     // Send a text prompt to trigger the AI to begin the interview
                     liveSession?.send("Please begin the interview.")
+                    Log.d(TAG, "Initial prompt sent successfully!")
                 } catch (e: Exception) {
+                    Log.e(TAG, "Failed to send initial message: ${e.message}", e)
                     // If sending the initial message fails, update state with error
                     _conversationState.update {
                         it.copy(
@@ -143,6 +154,7 @@ actual class GeminiInterviewService actual constructor() {
             // automatically but doesn't provide transcriptions or wake-word detection.
 
         } catch (e: Exception) {
+            Log.e(TAG, "Live API initialization error: ${e.message}", e)
             _conversationState.update {
                 it.copy(
                     error = """
@@ -207,6 +219,7 @@ actual class GeminiInterviewService actual constructor() {
 
     @OptIn(PublicPreviewAPI::class)
     actual fun endConversation() {
+        Log.d(TAG, "endConversation() called")
         scope.launch {
             try {
                 // Stop audio and close the session
@@ -214,6 +227,7 @@ actual class GeminiInterviewService actual constructor() {
                 liveSession?.close()
                 liveSession = null
 
+                Log.d(TAG, "Conversation ended successfully")
                 _conversationState.update {
                     it.copy(
                         conversationText = "Interview session ended. Thank you!",
@@ -223,6 +237,7 @@ actual class GeminiInterviewService actual constructor() {
                 }
             } catch (e: Exception) {
                 // Log error but don't show to user during cleanup
+                Log.e(TAG, "Error ending conversation: ${e.message}", e)
             }
         }
     }
