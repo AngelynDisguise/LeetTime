@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -19,8 +18,6 @@ kotlin {
             freeCompilerArgs.addAll("-Xallow-unstable-dependencies", "-Xsuppress-version-warnings")
         }
     }
-
-    jvm("desktop")
 
     listOf(
         iosArm64(),
@@ -87,13 +84,7 @@ kotlin {
             // Firebase AI Logic for Gemini Live API
             // Using latest BOM for Live API support (firebase-ai:17.6.0)
             implementation(project.dependencies.platform("com.google.firebase:firebase-bom:34.6.0"))
-            implementation("com.google.firebase:firebase-ai")
-        }
-        val desktopMain by getting {
-            dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation("io.ktor:ktor-client-okhttp:3.3.2")
-            }
+            implementation(libs.firebase.ai)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
