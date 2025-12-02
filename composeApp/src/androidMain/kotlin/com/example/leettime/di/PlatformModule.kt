@@ -4,7 +4,13 @@ import android.content.Context
 import com.example.leettime.data.local.SettingsFactory
 import org.koin.dsl.module
 
-fun platformModule(context: Context) = module {
-    single { context }
-    single { SettingsFactory(context).createSettings() }
+private lateinit var appContext: Context
+
+fun initAndroidContext(context: Context) {
+    appContext = context
+}
+
+actual val platformModule = module {
+    single { appContext }
+    single { SettingsFactory(appContext).createSettings() }
 }

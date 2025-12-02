@@ -40,13 +40,14 @@ kotlin {
         binaries.executable()
     }
 
-    // Configure compiler to allow experimental Firebase AI APIs
+    // allow experimental Firebase AI API
     targets.all {
         compilations.all {
-            compilerOptions.configure {
-                freeCompilerArgs.addAll(
+            compileTaskProvider.configure{
+                compilerOptions.freeCompilerArgs.addAll(
                     "-Xskip-prerelease-check",
-                    "-Xsuppress-version-warnings"
+                    "-Xsuppress-version-warnings",
+                    "-Xexpect-actual-classes"
                 )
             }
         }
@@ -69,8 +70,8 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.koin.core)
             implementation(libs.koin.compose.viewmodel)
-            implementation("com.russhwolf:multiplatform-settings:1.2.0")
-            implementation("com.russhwolf:multiplatform-settings-serialization:1.2.0")
+            implementation("com.russhwolf:multiplatform-settings:1.3.0")
+            implementation("com.russhwolf:multiplatform-settings-serialization:1.3.0")
         }
         androidMain.dependencies {
             implementation(compose.preview)
@@ -78,11 +79,8 @@ kotlin {
             implementation(libs.ktor.client.android)
             implementation("androidx.datastore:datastore-preferences:1.1.1")
             implementation("com.russhwolf:multiplatform-settings-datastore:1.2.0")
-            implementation("com.russhwolf:multiplatform-settings-coroutines:1.2.0")
+            implementation("com.russhwolf:multiplatform-settings-coroutines:1.3.0")
             implementation(libs.koin.android)
-
-            // Firebase AI Logic for Gemini Live API
-            // Using latest BOM for Live API support (firebase-ai:17.6.0)
             implementation(project.dependencies.platform("com.google.firebase:firebase-bom:34.6.0"))
             implementation(libs.firebase.ai)
         }
@@ -99,7 +97,7 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
-            implementation("com.russhwolf:multiplatform-settings-test:1.2.0")
+            implementation("com.russhwolf:multiplatform-settings-test:1.3.0")
         }
     }
 }

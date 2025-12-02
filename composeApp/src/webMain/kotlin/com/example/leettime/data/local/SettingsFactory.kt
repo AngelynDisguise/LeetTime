@@ -5,6 +5,6 @@ import com.russhwolf.settings.StorageSettings
 
 actual class SettingsFactory {
     actual fun createSettings(): Settings {
-        return StorageSettings()
+        return StorageSettings() // use localStorage
     }
 }

@@ -1,9 +1,8 @@
 package com.example.leettime.di
 
-import com.russhwolf.settings.Settings
-import com.russhwolf.settings.StorageSettings
+import com.example.leettime.data.local.SettingsFactory
 import org.koin.dsl.module
 
-val platformModule = module {
-    single<Settings> { StorageSettings() }
+actual val platformModule = module {
+    single { SettingsFactory().createSettings() }
 }
