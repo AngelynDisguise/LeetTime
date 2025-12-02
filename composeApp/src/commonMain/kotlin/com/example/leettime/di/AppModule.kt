@@ -4,9 +4,7 @@ import com.example.leettime.data.local.ProblemCache
 import com.example.leettime.data.network.GeminiInterviewService
 import com.example.leettime.data.network.LeetCodeApiService
 import com.example.leettime.data.repository.LeetCodeRepository
-import com.example.leettime.ui.viewmodels.InterviewViewModel
-import com.example.leettime.ui.viewmodels.LeetCodeViewModel
-import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.Module
 import org.koin.dsl.module
 
 val appModule = module {
@@ -14,6 +12,8 @@ val appModule = module {
     single { ProblemCache(get()) }
     single { LeetCodeRepository(get(), get()) }
     single { GeminiInterviewService() }
-    viewModel { LeetCodeViewModel(get()) }
-    viewModel { InterviewViewModel(get()) }
+    includes(viewModelModule)
 }
+
+// Platform-specific ViewModel module
+expect val viewModelModule: Module
